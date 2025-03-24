@@ -37,7 +37,7 @@
         <!-- File Provider for Camera Photos and Videos -->
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.yourpackage.fileprovider"
+            android:authorities="com.example.clouddemo.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

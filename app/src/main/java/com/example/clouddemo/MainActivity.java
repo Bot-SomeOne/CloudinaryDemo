@@ -37,6 +37,7 @@ import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
+    private static final String FILEPROVIDER_AUTHORITY = "com.example.clouddemo.fileprovider";
     private static final int REQUEST_CAMERA_PERMISSION = 100;
 
     private Uri currentMediaUri;
@@ -64,6 +65,8 @@ public class MainActivity extends AppCompatActivity {
                     // Determine media type
                     currentMediaType = MediaUtils.getMediaType(MainActivity.this, uri);
 
+                    Log.i(TAG, "Selected media type: " + currentMediaType);
+                    Log.i(TAG, "Selected media URI: " + uri.toString());
                     handleMediaResult(uri);
                 }
             });
@@ -161,9 +164,9 @@ public class MainActivity extends AppCompatActivity {
             File photoFile = createMediaFile(".jpg");
 
             currentMediaUri = FileProvider.getUriForFile(this,
-                    "com.yourpackage.fileprovider",
+                    FILEPROVIDER_AUTHORITY,
                     photoFile);
-
+            Log.i(TAG, "Photo URI: " + currentMediaUri.toString());
             takePhotoLauncher.launch(currentMediaUri);
 
         } catch (IOException ex) {
@@ -180,9 +183,10 @@ public class MainActivity extends AppCompatActivity {
             File videoFile = createMediaFile(".mp4");
 
             currentMediaUri = FileProvider.getUriForFile(this,
-                    "com.yourpackage.fileprovider",
+                    FILEPROVIDER_AUTHORITY,
                     videoFile);
 
+            Log.i(TAG, "Video URI: " + currentMediaUri.toString());
             takeVideoLauncher.launch(currentMediaUri);
 
         } catch (IOException ex) {
@@ -230,6 +234,8 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     // Show preview of the media
                     displayMediaPreview(savedMediaFile);
+                    Log.i(TAG, "Saved media file path: " + savedMediaFile.getAbsolutePath());
+
                     progressBar.setVisibility(View.GONE);
 
                     // For videos, create a thumbnail
@@ -282,6 +288,12 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
+        Log.d(TAG, "File path check before upload:");
+        Log.d(TAG, "- Absolute path: " + Uri.parse(savedMediaFile.getAbsolutePath()));
+        Log.d(TAG, "- File exists: " + savedMediaFile.exists());
+        Log.d(TAG, "- File length: " + savedMediaFile.length());
+        Log.d(TAG, "- File can read: " + savedMediaFile.canRead());
+
         progressBar.setProgress(0);
         progressBar.setVisibility(View.VISIBLE);
         tvStatus.setText("Uploading to Cloudinary...");
@@ -298,7 +310,7 @@ public class MainActivity extends AppCompatActivity {
      * Upload image to Cloudinary
      */
     private void uploadImage(File imageFile) {
-        cloudinaryManager.uploadImage(imageFile.getAbsolutePath(), "chat_images", new CloudinaryManager.CloudinaryCallback<Map<String, Object>>() {
+        cloudinaryManager.uploadImage(Uri.fromFile(imageFile).toString(), "chat_images", new CloudinaryManager.CloudinaryCallback<Map<String, Object>>() {
             @Override
             public void onSuccess(Map<String, Object> result) {
                 runOnUiThread(() -> {
@@ -321,6 +333,7 @@ public class MainActivity extends AppCompatActivity {
                     btnUpload.setEnabled(true);
                     tvStatus.setText("Upload failed: " + errorMsg);
                     Toast.makeText(MainActivity.this, "Upload failed: " + errorMsg, Toast.LENGTH_SHORT).show();
+                    Log.e(TAG, "Upload failed: " + errorMsg);
                 });
             }
 
@@ -338,7 +351,7 @@ public class MainActivity extends AppCompatActivity {
      * Upload video to Cloudinary
      */
     private void uploadVideo(File videoFile) {
-        cloudinaryManager.uploadVideo(videoFile.getAbsolutePath(), "chat_videos", new CloudinaryManager.CloudinaryCallback<Map<String, Object>>() {
+        cloudinaryManager.uploadVideo(Uri.fromFile(videoFile).toString(), "chat_videos", new CloudinaryManager.CloudinaryCallback<Map<String, Object>>() {
             @Override
             public void onSuccess(Map<String, Object> result) {
                 // Video upload successful, now upload thumbnail if available
@@ -366,6 +379,7 @@ public class MainActivity extends AppCompatActivity {
                     btnUpload.setEnabled(true);
                     tvStatus.setText("Upload failed: " + errorMsg);
                     Toast.makeText(MainActivity.this, "Upload failed: " + errorMsg, Toast.LENGTH_SHORT).show();
+                    Log.e(TAG, "Upload failed: " + errorMsg);
                 });
             }
 
@@ -383,7 +397,7 @@ public class MainActivity extends AppCompatActivity {
      * Upload video thumbnail to Cloudinary
      */
     private void uploadVideoThumbnail(File thumbnailFile, String videoPublicId, String videoUrl) {
-        cloudinaryManager.uploadImage(thumbnailFile.getAbsolutePath(), "chat_thumbnails", new CloudinaryManager.CloudinaryCallback<Map<String, Object>>() {
+        cloudinaryManager.uploadImage(Uri.fromFile(thumbnailFile).toString(), "chat_thumbnails", new CloudinaryManager.CloudinaryCallback<Map<String, Object>>() {
             @Override
             public void onSuccess(Map<String, Object> result) {
                 runOnUiThread(() -> {
@@ -409,6 +423,7 @@ public class MainActivity extends AppCompatActivity {
                     tvStatus.setText("Video uploaded, but thumbnail failed: " + errorMsg +
                             "\nVideo URL: " + videoUrl);
                     Toast.makeText(MainActivity.this, "Video uploaded, thumbnail failed", Toast.LENGTH_SHORT).show();
+                    Log.e(TAG, "Upload failed: " + errorMsg);
                 });
             }
 
