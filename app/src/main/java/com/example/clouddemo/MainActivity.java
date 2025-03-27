@@ -23,6 +23,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 
+import com.cloudinary.utils.ObjectUtils;
 import com.example.clouddemo.R;
 import com.example.clouddemo.CloudinaryManager;
 import com.example.clouddemo.MediaUtils;
@@ -52,6 +53,8 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvStatus;
     private Button btnUpload;
     private View previewPlaceholder;
+
+    String url; // TODO: rm
 
     // Activity result launcher for picking image/video from gallery
     private final ActivityResultLauncher<String[]> pickMediaLauncher = registerForActivityResult(
@@ -101,9 +104,9 @@ public class MainActivity extends AppCompatActivity {
 
         // Configure Cloudinary (you should replace these with your actual credentials)
         Map<String, String> config = new HashMap<>();
-        config.put("cloud_name", "your_cloud_name");
-        config.put("api_key", "your_api_key");
-        config.put("api_secret", "your_api_secret");
+        config.put("cloud_name", "");
+        config.put("api_key", "");
+        config.put("api_secret", "");
         cloudinaryManager.initialize(config);
 
         // Initialize views
@@ -124,6 +127,35 @@ public class MainActivity extends AppCompatActivity {
 
         // Initially hide upload button until media is selected
         btnUpload.setVisibility(View.GONE);
+
+        // TODO: rm
+        CloudinaryTransformationHelper cloudinaryTransformationHelper = new CloudinaryTransformationHelper();
+        cloudinaryTransformationHelper.autoFormat();
+        this.url = cloudinaryManager.getResourceUrl(
+                "cld-sample-5",
+                "image",
+                cloudinaryTransformationHelper.getTransformations()
+        );
+        Log.i(TAG, "URL: " + url);
+//        File filesave = MediaUtils.saveMediaToInternalStorage(
+//                this,
+//                Uri.parse(url),
+//                "image"
+//        );
+//        Log.i(TAG, "File path: " + filesave.getAbsolutePath());
+//        imagePreview.setImageURI(Uri.fromFile(filesave));
+        MediaUtils.getMediaFromHost(this, url, "")
+                .thenAccept(a -> {
+                    if (a == null) {
+                        Log.i(TAG, "File path: null");
+                    } else {
+                        Log.i(TAG, "File path: " + a.getAbsolutePath());
+                        runOnUiThread(() -> {
+                            imagePreview.setVisibility(View.VISIBLE);
+                            imagePreview.setImageURI(Uri.fromFile(a));
+                        });
+                    }
+                });
     }
 
     /**
@@ -219,6 +251,7 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * Handle the selected/captured media
+     *
      * @param mediaUri URI of the selected/captured media
      */
     private void handleMediaResult(Uri mediaUri) {
@@ -228,7 +261,11 @@ public class MainActivity extends AppCompatActivity {
 
         // Save media to internal storage
         new Thread(() -> {
-            savedMediaFile = MediaUtils.saveMediaToInternalStorage(this, mediaUri, currentMediaType);
+            savedMediaFile = MediaUtils.saveMediaToInternalStorage(
+                    this,
+                    mediaUri,
+                    currentMediaType
+            );
 
             if (savedMediaFile != null) {
                 runOnUiThread(() -> {
@@ -261,6 +298,7 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * Display media preview
+     *
      * @param mediaFile File to display
      */
     private void displayMediaPreview(File mediaFile) {
@@ -310,130 +348,152 @@ public class MainActivity extends AppCompatActivity {
      * Upload image to Cloudinary
      */
     private void uploadImage(File imageFile) {
-        cloudinaryManager.uploadImage(Uri.fromFile(imageFile).toString(), "chat_images", new CloudinaryManager.CloudinaryCallback<Map<String, Object>>() {
-            @Override
-            public void onSuccess(Map<String, Object> result) {
-                runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    btnUpload.setEnabled(true);
+        String folder = "medias/users/2509/images/";
+        cloudinaryManager.uploadImage(
+                Uri.fromFile(imageFile).toString(),
+                folder,
+                new CloudinaryManager.CloudinaryCallback<Map<String, Object>>() {
+                    @Override
+                    public void onSuccess(Map<String, Object> result) {
+                        runOnUiThread(() -> {
+                            progressBar.setVisibility(View.GONE);
+                            btnUpload.setEnabled(true);
 
-                    // Get public ID and URL
-                    String publicId = (String) result.get("public_id");
-                    String url = (String) result.get("url");
+                            // Get public ID and URL
+                            String publicId = (String) result.get("public_id");
+                            String url = (String) result.get("url");
 
-                    tvStatus.setText("Upload successful!\nURL: " + url);
-                    Toast.makeText(MainActivity.this, "Image uploaded successfully", Toast.LENGTH_SHORT).show();
+                            Log.d(TAG, "Public Id: " + publicId);
+                            Log.d(TAG, "URL: " + url);
+
+                            tvStatus.setText("Upload successful!\nURL: " + url);
+                            Log.d(TAG, "Public Id: " + publicId);
+                            Log.d(TAG, "URL: " + url);
+                            Toast.makeText(MainActivity.this, "Image uploaded successfully", Toast.LENGTH_SHORT).show();
+                        });
+                    }
+
+                    @Override
+                    public void onError(String errorMsg) {
+                        runOnUiThread(() -> {
+                            progressBar.setVisibility(View.GONE);
+                            btnUpload.setEnabled(true);
+                            tvStatus.setText("Upload failed: " + errorMsg);
+                            Toast.makeText(MainActivity.this, "Upload failed: " + errorMsg, Toast.LENGTH_SHORT).show();
+                            Log.e(TAG, "Upload failed: " + errorMsg);
+                        });
+                    }
+
+                    @Override
+                    public void onProgress(int progress) {
+                        runOnUiThread(() -> {
+                            progressBar.setProgress(progress);
+                            tvStatus.setText("Uploading: " + progress + "%");
+                        });
+                    }
                 });
-            }
-
-            @Override
-            public void onError(String errorMsg) {
-                runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    btnUpload.setEnabled(true);
-                    tvStatus.setText("Upload failed: " + errorMsg);
-                    Toast.makeText(MainActivity.this, "Upload failed: " + errorMsg, Toast.LENGTH_SHORT).show();
-                    Log.e(TAG, "Upload failed: " + errorMsg);
-                });
-            }
-
-            @Override
-            public void onProgress(int progress) {
-                runOnUiThread(() -> {
-                    progressBar.setProgress(progress);
-                    tvStatus.setText("Uploading: " + progress + "%");
-                });
-            }
-        });
     }
 
     /**
      * Upload video to Cloudinary
      */
     private void uploadVideo(File videoFile) {
-        cloudinaryManager.uploadVideo(Uri.fromFile(videoFile).toString(), "chat_videos", new CloudinaryManager.CloudinaryCallback<Map<String, Object>>() {
-            @Override
-            public void onSuccess(Map<String, Object> result) {
-                // Video upload successful, now upload thumbnail if available
-                String publicId = (String) result.get("public_id");
-                String url = (String) result.get("url");
+        String folder = "medias/users/2509/videos/";
+        cloudinaryManager.uploadVideo(
+                Uri.fromFile(videoFile).toString(),
+                folder,
+                new CloudinaryManager.CloudinaryCallback<Map<String, Object>>() {
+                    @Override
+                    public void onSuccess(Map<String, Object> result) {
+                        // Video upload successful, now upload thumbnail if available
+                        String publicId = (String) result.get("public_id");
+                        String url = (String) result.get("url");
+                        Log.d(TAG, "Public Id: " + publicId);
+                        Log.d(TAG, "URL: " + url);
 
-                if (videoThumbnailFile != null && videoThumbnailFile.exists()) {
-                    // Upload thumbnail separately
-                    uploadVideoThumbnail(videoThumbnailFile, publicId, url);
-                } else {
-                    // No thumbnail, finish here
-                    runOnUiThread(() -> {
-                        progressBar.setVisibility(View.GONE);
-                        btnUpload.setEnabled(true);
-                        tvStatus.setText("Upload successful!\nVideo URL: " + url);
-                        Toast.makeText(MainActivity.this, "Video uploaded successfully", Toast.LENGTH_SHORT).show();
-                    });
-                }
-            }
+                        if (videoThumbnailFile != null && videoThumbnailFile.exists()) {
+                            // Upload thumbnail separately
+                            uploadVideoThumbnail(videoThumbnailFile, publicId, url);
+                        } else {
+                            // No thumbnail, finish here
+                            runOnUiThread(() -> {
+                                progressBar.setVisibility(View.GONE);
+                                btnUpload.setEnabled(true);
+                                tvStatus.setText("Upload successful!\nVideo URL: " + url);
+                                Toast.makeText(MainActivity.this, "Video uploaded successfully", Toast.LENGTH_SHORT).show();
+                            });
+                        }
+                    }
 
-            @Override
-            public void onError(String errorMsg) {
-                runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    btnUpload.setEnabled(true);
-                    tvStatus.setText("Upload failed: " + errorMsg);
-                    Toast.makeText(MainActivity.this, "Upload failed: " + errorMsg, Toast.LENGTH_SHORT).show();
-                    Log.e(TAG, "Upload failed: " + errorMsg);
+                    @Override
+                    public void onError(String errorMsg) {
+                        runOnUiThread(() -> {
+                            progressBar.setVisibility(View.GONE);
+                            btnUpload.setEnabled(true);
+                            tvStatus.setText("Upload failed: " + errorMsg);
+                            Toast.makeText(MainActivity.this, "Upload failed: " + errorMsg, Toast.LENGTH_SHORT).show();
+                            Log.e(TAG, "Upload failed: " + errorMsg);
+                        });
+                    }
+
+                    @Override
+                    public void onProgress(int progress) {
+                        runOnUiThread(() -> {
+                            progressBar.setProgress(progress);
+                            tvStatus.setText("Uploading video: " + progress + "%");
+                        });
+                    }
                 });
-            }
-
-            @Override
-            public void onProgress(int progress) {
-                runOnUiThread(() -> {
-                    progressBar.setProgress(progress);
-                    tvStatus.setText("Uploading video: " + progress + "%");
-                });
-            }
-        });
     }
 
     /**
      * Upload video thumbnail to Cloudinary
      */
     private void uploadVideoThumbnail(File thumbnailFile, String videoPublicId, String videoUrl) {
-        cloudinaryManager.uploadImage(Uri.fromFile(thumbnailFile).toString(), "chat_thumbnails", new CloudinaryManager.CloudinaryCallback<Map<String, Object>>() {
-            @Override
-            public void onSuccess(Map<String, Object> result) {
-                runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    btnUpload.setEnabled(true);
+        String folder = "medias/users/2509/thumbnails/";
+        cloudinaryManager.uploadImage(
+                Uri.fromFile(thumbnailFile).toString(),
+                "medias/users/2509/thumbnails/",
+                new CloudinaryManager.CloudinaryCallback<Map<String, Object>>() {
+                    @Override
+                    public void onSuccess(Map<String, Object> result) {
+                        runOnUiThread(() -> {
+                            progressBar.setVisibility(View.GONE);
+                            btnUpload.setEnabled(true);
 
-                    // Get thumbnail public ID and URL
-                    String thumbnailPublicId = (String) result.get("public_id");
-                    String thumbnailUrl = (String) result.get("url");
+                            // Get thumbnail public ID and URL
+                            String thumbnailPublicId = (String) result.get("public_id");
+                            String thumbnailUrl = (String) result.get("url");
 
-                    tvStatus.setText("Upload successful!\nVideo URL: " + videoUrl +
-                            "\nThumbnail URL: " + thumbnailUrl);
-                    Toast.makeText(MainActivity.this, "Video and thumbnail uploaded", Toast.LENGTH_SHORT).show();
+                            Log.d(TAG, "Thumbnail Public Id: " + thumbnailPublicId);
+                            Log.d(TAG, "Thumbnail URL: " + thumbnailUrl);
+
+                            tvStatus.setText("Upload successful!\nVideo URL: " + videoUrl +
+                                    "\nThumbnail URL: " + thumbnailUrl);
+                            Toast.makeText(MainActivity.this, "Video and thumbnail uploaded", Toast.LENGTH_SHORT).show();
+                        });
+                    }
+
+                    @Override
+                    public void onError(String errorMsg) {
+                        // Thumbnail upload failed, but video upload succeeded
+                        runOnUiThread(() -> {
+                            progressBar.setVisibility(View.GONE);
+                            btnUpload.setEnabled(true);
+                            tvStatus.setText("Video uploaded, but thumbnail failed: " + errorMsg +
+                                    "\nVideo URL: " + videoUrl);
+                            Toast.makeText(MainActivity.this, "Video uploaded, thumbnail failed", Toast.LENGTH_SHORT).show();
+                            Log.e(TAG, "Upload failed: " + errorMsg);
+                        });
+                    }
+
+                    @Override
+                    public void onProgress(int progress) {
+                        runOnUiThread(() -> {
+                            progressBar.setProgress(progress);
+                            tvStatus.setText("Uploading thumbnail: " + progress + "%");
+                        });
+                    }
                 });
-            }
-
-            @Override
-            public void onError(String errorMsg) {
-                // Thumbnail upload failed, but video upload succeeded
-                runOnUiThread(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    btnUpload.setEnabled(true);
-                    tvStatus.setText("Video uploaded, but thumbnail failed: " + errorMsg +
-                            "\nVideo URL: " + videoUrl);
-                    Toast.makeText(MainActivity.this, "Video uploaded, thumbnail failed", Toast.LENGTH_SHORT).show();
-                    Log.e(TAG, "Upload failed: " + errorMsg);
-                });
-            }
-
-            @Override
-            public void onProgress(int progress) {
-                runOnUiThread(() -> {
-                    progressBar.setProgress(progress);
-                    tvStatus.setText("Uploading thumbnail: " + progress + "%");
-                });
-            }
-        });
     }
 }

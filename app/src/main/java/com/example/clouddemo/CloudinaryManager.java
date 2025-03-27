@@ -20,6 +20,7 @@ import java.util.Map;
 public class CloudinaryManager {
     private static final String TAG = "CloudinaryManager";
     private static CloudinaryManager instance;
+    private String CLOUD_NAME;
     private final Context context;
     private boolean isInitialized = false;
 
@@ -51,7 +52,10 @@ public class CloudinaryManager {
         if (!isInitialized) {
             try {
                 MediaManager.init(context, config);
+
+                CLOUD_NAME = config.get("cloud_name");
                 isInitialized = true;
+
                 Log.d(TAG, "Cloudinary initialized successfully");
             } catch (Exception e) {
                 Log.e(TAG, "Error initializing Cloudinary: " + e.getMessage());
@@ -94,6 +98,14 @@ public class CloudinaryManager {
         if (folder != null && !folder.isEmpty()) {
             options.put("folder", folder);
         }
+        if ("image".equals(resourceType)) {
+            options.put("quality", "auto");
+            options.put("fetch_format", "auto");
+        }
+        options.put("use_filename", true);
+
+//        String publicId = filePath.substring(filePath.lastIndexOf("/") + 1).split(".")[1];
+//        options.put("public_id", publicId);
 
         return MediaManager.get()
                 .upload(Uri.parse(filePath))
@@ -322,7 +334,7 @@ public class CloudinaryManager {
             public void run() {
                 try {
                     // Generate URL for the resource
-                    String url = "https://res.cloudinary.com/YOUR_CLOUD_NAME/"
+                    String url = "https://res.cloudinary.com/" + CLOUD_NAME + "/"
                             + resourceType + "/upload/" + publicId;
 
                     // Simulate download progress
@@ -358,7 +370,7 @@ public class CloudinaryManager {
     public String getResourceUrl(String publicId, String resourceType, Map<String, String> transformations) {
         checkInitialization();
 
-        StringBuilder urlBuilder = new StringBuilder("https://res.cloudinary.com/YOUR_CLOUD_NAME/");
+        StringBuilder urlBuilder = new StringBuilder("https://res.cloudinary.com/" + CLOUD_NAME + "/");
         urlBuilder.append(resourceType).append("/upload/");
 
         // Add transformations
