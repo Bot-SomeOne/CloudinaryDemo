@@ -1,4 +1,4 @@
-package com.example.clouddemo;
+package com.example.clouddemo.utils;
 
 import android.content.ContentResolver;
 import android.content.ContentValues;

@@ -1,17 +1,28 @@
-package com.example.clouddemo;
+package com.example.clouddemo.utils.cloudinary;
 
 import android.content.Context;
 import android.net.Uri;
 import android.util.Log;
 
+import com.cloudinary.Url;
 import com.cloudinary.android.MediaManager;
 import com.cloudinary.android.callback.ErrorInfo;
 import com.cloudinary.android.callback.UploadCallback;
 import com.cloudinary.android.policy.UploadPolicy;
+import com.cloudinary.android.signed.Signature;
+import com.cloudinary.android.signed.SignatureProvider;
+import com.example.clouddemo.api.ApiManager;
+import com.example.clouddemo.api.RetrofitClient;
+import com.example.clouddemo.model.ResponseData;
+import com.example.clouddemo.utils.Utils;
 
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 /**
  * CloudinaryManager handles all Cloudinary operations for the chat application.
@@ -23,17 +34,21 @@ public class CloudinaryManager {
     private String CLOUD_NAME;
     private final Context context;
     private boolean isInitialized = false;
+    private final ApiManager apiManager;
 
     /**
      * Private constructor to enforce singleton pattern
+     *
      * @param context Application context
      */
     private CloudinaryManager(Context context) {
         this.context = context.getApplicationContext();
+        this.apiManager = new ApiManager();
     }
 
     /**
      * Get singleton instance of CloudinaryManager
+     *
      * @param context Application context
      * @return CloudinaryManager instance
      */
@@ -51,10 +66,49 @@ public class CloudinaryManager {
     public void initialize(Map<String, String> config) {
         if (!isInitialized) {
             try {
-                MediaManager.init(context, config);
 
-                CLOUD_NAME = config.get("cloud_name");
+                MediaManager.init(context, new SignatureProvider() {
+                    String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDMyNTE4NDcsImp0aSI6IjBhNTI3NDAwLTgyOTYtNDVlZC04Y2M3LWM0OGU3MDg5OTE0MCIsImlhdCI6MTc0MzIyMzA0NywiaXNzIjoiZ28tZWNvbW1lcmNlIiwic3ViIjoiN2Q2MTFkYTktYmE4My00MGQ0LThjZTUtZGY0YzI1YjgwZmRmOmNsaXRva2VuOmY4NjFjMTYxYWY3YjQ5MzQ4YzlhOTVkNzMyZGM5ZGZiIiwidXNlcl9pZCI6IjdkNjExZGE5LWJhODMtNDBkNC04Y2U1LWRmNGMyNWI4MGZkZiJ9.vXaAcBVtsG9t3C1YBwwWpE7sSg4DqfrpHExS3A_yEMU";
+
+                    @Override
+                    public Signature provideSignature(Map options) {
+                        Log.d(TAG, "Options: " + options);
+                        // call api get signature
+                        try {
+                            // Get request signature
+                            Log.d(TAG, "Getting signature...");
+                            String configUrl = Utils.getConfigUrl(options);
+                            Log.d(TAG, "Config URL: " + configUrl);
+
+                            Call<ResponseData<Object>> call = RetrofitClient.getInstance().getService().getSignatur("Bearer " + token, configUrl);
+                            Response<ResponseData<Object>> response = call.execute();
+
+                            int code = response.code();
+                            if (code != 200) {
+                                Log.e(TAG, "Error getting signature: " + code);
+                                return null;
+                            }
+                            String apiKey = com.example.clouddemo.utils.Utils.getDataBody(response.body(), "api_key");
+                            String cloudName = com.example.clouddemo.utils.Utils.getDataBody(response.body(), "cloud_name");
+                            String signature = com.example.clouddemo.utils.Utils.getDataBody(response.body(), "signature");
+                            String timestamp = com.example.clouddemo.utils.Utils.getDataBody(response.body(), "timestamp");
+                            long longTimestamp = Long.parseLong(timestamp);
+
+                            return new Signature(signature, apiKey, longTimestamp);
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error getting signature: " + e.getMessage());
+                            return null;
+                        }
+                    }
+
+                    @Override
+                    public String getName() {
+                        return "get signature";
+                    }
+                }, config);
+
                 isInitialized = true;
+                CLOUD_NAME = config.get("cloud_name");
 
                 Log.d(TAG, "Cloudinary initialized successfully");
             } catch (Exception e) {
@@ -77,16 +131,19 @@ public class CloudinaryManager {
      */
     public interface CloudinaryCallback<T> {
         void onSuccess(T result);
+
         void onError(String errorMsg);
+
         void onProgress(int progress);
     }
 
     /**
      * Upload any media file to Cloudinary
-     * @param filePath Path to the media file
+     *
+     * @param filePath     Path to the media file
      * @param resourceType Type of resource (image, video, raw, etc.)
-     * @param folder Destination folder in Cloudinary
-     * @param callback Callback for upload progress and result
+     * @param folder       Destination folder in Cloudinary
+     * @param callback     Callback for upload progress and result
      * @return Request ID
      */
     public String uploadMedia(String filePath, String resourceType, String folder,
@@ -94,27 +151,18 @@ public class CloudinaryManager {
         checkInitialization();
 
         Map<String, Object> options = new HashMap<>();
-        options.put("resource_type", resourceType);
-        if (folder != null && !folder.isEmpty()) {
-            options.put("folder", folder);
-        }
-        if ("image".equals(resourceType)) {
-            options.put("quality", "auto");
-            options.put("fetch_format", "auto");
-        }
+        options.put("resourceType", resourceType);
+//        if (folder != null && !folder.isEmpty()) {
+//            options.put("folder", folder);
+//        }
         options.put("use_filename", true);
-
-//        String publicId = filePath.substring(filePath.lastIndexOf("/") + 1).split(".")[1];
-//        options.put("public_id", publicId);
+        // show config upload
+        Log.d(TAG, "Options config upload: " + options);
 
         return MediaManager.get()
                 .upload(Uri.parse(filePath))
-                .option("resource_type", resourceType)
+                .option("api_key", "436471643295457")
                 .options(options)
-                // Use basic upload policy without timeWindow method
-                .policy(new UploadPolicy.Builder()
-                        .networkPolicy(UploadPolicy.NetworkType.ANY)
-                        .build())
                 .callback(new UploadCallback() {
                     @Override
                     public void onStart(String requestId) {
@@ -156,9 +204,10 @@ public class CloudinaryManager {
 
     /**
      * Upload an image to Cloudinary
+     *
      * @param imagePath Path to the image file
-     * @param folder Destination folder in Cloudinary
-     * @param callback Callback for upload progress and result
+     * @param folder    Destination folder in Cloudinary
+     * @param callback  Callback for upload progress and result
      * @return Request ID
      */
     public String uploadImage(String imagePath, String folder,
@@ -168,9 +217,10 @@ public class CloudinaryManager {
 
     /**
      * Upload a video to Cloudinary
+     *
      * @param videoPath Path to the video file
-     * @param folder Destination folder in Cloudinary
-     * @param callback Callback for upload progress and result
+     * @param folder    Destination folder in Cloudinary
+     * @param callback  Callback for upload progress and result
      * @return Request ID
      */
     public String uploadVideo(String videoPath, String folder,
@@ -180,9 +230,10 @@ public class CloudinaryManager {
 
     /**
      * Upload a video thumbnail to Cloudinary
+     *
      * @param videoPath Path to the video file
-     * @param folder Destination folder in Cloudinary
-     * @param callback Callback for upload progress and result
+     * @param folder    Destination folder in Cloudinary
+     * @param callback  Callback for upload progress and result
      * @return Request ID
      */
     public String uploadVideoThumbnail(String videoPath, String folder,
@@ -241,9 +292,10 @@ public class CloudinaryManager {
 
     /**
      * Delete a resource from Cloudinary
-     * @param publicId Public ID of the resource to delete
+     *
+     * @param publicId     Public ID of the resource to delete
      * @param resourceType Type of resource (image, video, raw, etc.)
-     * @param callback Callback for deletion result
+     * @param callback     Callback for deletion result
      */
     public void deleteResource(final String publicId, final String resourceType,
                                final CloudinaryCallback<String> callback) {
@@ -280,10 +332,11 @@ public class CloudinaryManager {
 
     /**
      * Update a resource in Cloudinary (e.g., change tags, metadata)
-     * @param publicId Public ID of the resource to update
+     *
+     * @param publicId     Public ID of the resource to update
      * @param resourceType Type of resource (image, video, raw, etc.)
-     * @param updates Map of updates to apply
-     * @param callback Callback for update result
+     * @param updates      Map of updates to apply
+     * @param callback     Callback for update result
      */
     public void updateResource(final String publicId, final String resourceType,
                                final Map<String, Object> updates,
@@ -318,10 +371,11 @@ public class CloudinaryManager {
 
     /**
      * Download a resource from Cloudinary
-     * @param publicId Public ID of the resource to download
-     * @param resourceType Type of resource (image, video, raw, etc.)
+     *
+     * @param publicId        Public ID of the resource to download
+     * @param resourceType    Type of resource (image, video, raw, etc.)
      * @param destinationFile Destination file path
-     * @param callback Callback for download progress and result
+     * @param callback        Callback for download progress and result
      */
     public void downloadResource(final String publicId, final String resourceType,
                                  final File destinationFile,
@@ -362,8 +416,9 @@ public class CloudinaryManager {
 
     /**
      * Generate a URL for a resource with transformations
-     * @param publicId Public ID of the resource
-     * @param resourceType Type of resource (image, video, raw, etc.)
+     *
+     * @param publicId        Public ID of the resource
+     * @param resourceType    Type of resource (image, video, raw, etc.)
      * @param transformations Map of transformations to apply
      * @return URL string for the transformed resource
      */
@@ -389,6 +444,7 @@ public class CloudinaryManager {
 
     /**
      * Cancel an ongoing upload request
+     *
      * @param requestId ID of the request to cancel
      */
     public void cancelUpload(String requestId) {

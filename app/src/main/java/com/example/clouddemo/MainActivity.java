@@ -5,7 +5,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
-import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -23,10 +22,10 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 
-import com.cloudinary.utils.ObjectUtils;
-import com.example.clouddemo.R;
-import com.example.clouddemo.CloudinaryManager;
-import com.example.clouddemo.MediaUtils;
+import com.example.clouddemo.api.ApiManager;
+import com.example.clouddemo.model.ResponseData;
+import com.example.clouddemo.utils.MediaUtils;
+import com.example.clouddemo.utils.cloudinary.CloudinaryManager;
 
 import java.io.File;
 import java.io.IOException;
@@ -35,6 +34,10 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -104,9 +107,8 @@ public class MainActivity extends AppCompatActivity {
 
         // Configure Cloudinary (you should replace these with your actual credentials)
         Map<String, String> config = new HashMap<>();
-        config.put("cloud_name", "");
-        config.put("api_key", "");
-        config.put("api_secret", "");
+        config.put("cloud_name", "dan8zea37");
+
         cloudinaryManager.initialize(config);
 
         // Initialize views
@@ -129,14 +131,15 @@ public class MainActivity extends AppCompatActivity {
         btnUpload.setVisibility(View.GONE);
 
         // TODO: rm
-        CloudinaryTransformationHelper cloudinaryTransformationHelper = new CloudinaryTransformationHelper();
-        cloudinaryTransformationHelper.autoFormat();
-        this.url = cloudinaryManager.getResourceUrl(
-                "cld-sample-5",
-                "image",
-                cloudinaryTransformationHelper.getTransformations()
-        );
-        Log.i(TAG, "URL: " + url);
+//        CloudinaryTransformationHelper cloudinaryTransformationHelper = new CloudinaryTransformationHelper();
+//        cloudinaryTransformationHelper.autoFormat();
+//        String publicID = "medias/users/2509/images/file_pyyexl";
+//        this.url = cloudinaryManager.getResourceUrl(
+//                publicID,
+//                "image",
+//                cloudinaryTransformationHelper.getTransformations()
+//        );
+//        Log.i(TAG, "URL: " + url);
 //        File filesave = MediaUtils.saveMediaToInternalStorage(
 //                this,
 //                Uri.parse(url),
@@ -144,18 +147,19 @@ public class MainActivity extends AppCompatActivity {
 //        );
 //        Log.i(TAG, "File path: " + filesave.getAbsolutePath());
 //        imagePreview.setImageURI(Uri.fromFile(filesave));
-        MediaUtils.getMediaFromHost(this, url, "")
-                .thenAccept(a -> {
-                    if (a == null) {
-                        Log.i(TAG, "File path: null");
-                    } else {
-                        Log.i(TAG, "File path: " + a.getAbsolutePath());
-                        runOnUiThread(() -> {
-                            imagePreview.setVisibility(View.VISIBLE);
-                            imagePreview.setImageURI(Uri.fromFile(a));
-                        });
-                    }
-                });
+
+//        MediaUtils.getMediaFromHost(this, url, "")
+//                .thenAccept(a -> {
+//                    if (a == null) {
+//                        Log.i(TAG, "File path: null");
+//                    } else {
+//                        Log.i(TAG, "File path: " + a.getAbsolutePath());
+//                        runOnUiThread(() -> {
+//                            imagePreview.setVisibility(View.VISIBLE);
+//                            imagePreview.setImageURI(Uri.fromFile(a));
+//                        });
+//                    }
+//                });
     }
 
     /**

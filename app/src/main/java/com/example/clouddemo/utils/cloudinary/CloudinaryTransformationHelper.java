@@ -1,4 +1,4 @@
-package com.example.clouddemo;
+package com.example.clouddemo.utils.cloudinary;
 
 import androidx.annotation.NonNull;
 
