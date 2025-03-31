@@ -6,6 +6,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="16dp"
+    android:layout_marginTop="80px"
     tools:context=".MainActivity">
 
     <TextView
@@ -39,7 +40,41 @@
             android:layout_weight="1"
             android:text="Capture Media"
             android:layout_marginStart="8dp" />
+
     </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginBottom="24dp">
+
+        <Button
+            android:id="@+id/btnRecordAudio"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Record Audio"
+            android:layout_marginEnd="8dp" />
+
+        <Button
+            android:id="@+id/btnPlayAudio"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Play Audio"
+            android:layout_marginStart="8dp"
+            android:visibility="gone" /> <!-- Initially hidden -->
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tvAudioStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Record your audio"
+        android:gravity="center"
+        android:layout_marginBottom="24dp" />
 
     <TextView
         android:layout_width="match_parent"

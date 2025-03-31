@@ -58,6 +58,9 @@ public class MainActivity extends AppCompatActivity {
     private Button btnUpload;
     private View previewPlaceholder;
 
+    private Button btnRecordAudio, btnPlayAudio;
+    private TextView tvAudioStatus;
+
     String url; // TODO: rm
 
     // Activity result launcher for picking image/video from gallery
@@ -119,6 +122,9 @@ public class MainActivity extends AppCompatActivity {
         tvStatus = findViewById(R.id.tvStatus);
         btnUpload = findViewById(R.id.btnUpload);
         previewPlaceholder = findViewById(R.id.previewPlaceholder);
+        btnRecordAudio = findViewById(R.id.btnRecordAudio);
+        btnPlayAudio = findViewById(R.id.btnPlayAudio);
+        tvAudioStatus = findViewById(R.id.tvAudioStatus);
 
         Button btnGallery = findViewById(R.id.btnGallery);
         Button btnCamera = findViewById(R.id.btnCamera);
@@ -127,6 +133,9 @@ public class MainActivity extends AppCompatActivity {
         btnGallery.setOnClickListener(v -> openGallery());
         btnCamera.setOnClickListener(v -> showCameraOptions());
         btnUpload.setOnClickListener(v -> uploadToCloudinary());
+        // Audio recording and playback
+//        btnRecordAudio.setOnClickListener(v -> startRecording());
+//        btnPlayAudio.setOnClickListener(v -> playRecording());
 
         // Initially hide upload button until media is selected
         btnUpload.setVisibility(View.GONE);
