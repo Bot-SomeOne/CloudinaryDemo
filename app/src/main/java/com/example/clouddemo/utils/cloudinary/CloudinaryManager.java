@@ -8,6 +8,7 @@ import com.cloudinary.Url;
 import com.cloudinary.android.MediaManager;
 import com.cloudinary.android.callback.ErrorInfo;
 import com.cloudinary.android.callback.UploadCallback;
+import com.cloudinary.android.payload.Payload;
 import com.cloudinary.android.policy.UploadPolicy;
 import com.cloudinary.android.signed.Signature;
 import com.cloudinary.android.signed.SignatureProvider;
@@ -66,7 +67,6 @@ public class CloudinaryManager {
     public void initialize(Map<String, String> config) {
         if (!isInitialized) {
             try {
-
                 MediaManager.init(context, new SignatureProvider() {
                     String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDMyNTE4NDcsImp0aSI6IjBhNTI3NDAwLTgyOTYtNDVlZC04Y2M3LWM0OGU3MDg5OTE0MCIsImlhdCI6MTc0MzIyMzA0NywiaXNzIjoiZ28tZWNvbW1lcmNlIiwic3ViIjoiN2Q2MTFkYTktYmE4My00MGQ0LThjZTUtZGY0YzI1YjgwZmRmOmNsaXRva2VuOmY4NjFjMTYxYWY3YjQ5MzQ4YzlhOTVkNzMyZGM5ZGZiIiwidXNlcl9pZCI6IjdkNjExZGE5LWJhODMtNDBkNC04Y2U1LWRmNGMyNWI4MGZkZiJ9.vXaAcBVtsG9t3C1YBwwWpE7sSg4DqfrpHExS3A_yEMU";
 
@@ -140,65 +140,70 @@ public class CloudinaryManager {
     /**
      * Upload any media file to Cloudinary
      *
-     * @param filePath     Path to the media file
-     * @param resourceType Type of resource (image, video, raw, etc.)
-     * @param folder       Destination folder in Cloudinary
-     * @param callback     Callback for upload progress and result
+     * @param filePath Path to the media file
+     * @param folder   Destination folder in Cloudinary
+     * @param callback Callback for upload progress and result
      * @return Request ID
      */
-    public String uploadMedia(String filePath, String resourceType, String folder,
+    public String uploadMedia(String filePath, String folder, String resourceType,
                               final CloudinaryCallback<Map<String, Object>> callback) {
         checkInitialization();
 
+        // doc config options:: https://cloudinary.com/documentation/image_upload_api_reference#upload_required_parameters
         Map<String, Object> options = new HashMap<>();
-        options.put("resourceType", resourceType);
-//        if (folder != null && !folder.isEmpty()) {
-//            options.put("folder", folder);
-//        }
-        options.put("use_filename", true);
+        options.put("resource_type", resourceType);
+
+        options.put("max_file_size", 10485760 * 3); // 30 MB (in bytes)
+
+        if (folder != null && !folder.isEmpty()) {
+            options.put("asset_folder", folder);
+
+        }
         // show config upload
         Log.d(TAG, "Options config upload: " + options);
 
+        UploadCallback uploadCallback = new UploadCallback() {
+            @Override
+            public void onStart(String requestId) {
+                Log.d(TAG, "Upload started: " + requestId);
+            }
+
+            @Override
+            public void onProgress(String requestId, long bytes, long totalBytes) {
+                Double progress = (double) bytes / totalBytes;
+                Log.d(TAG, "Upload progress: " + progress + "%");
+                int intProgress = progress.intValue();
+                if (callback != null) {
+                    callback.onProgress(intProgress);
+                }
+            }
+
+            @Override
+            public void onSuccess(String requestId, Map resultData) {
+                Log.d(TAG, "Upload successful: " + requestId);
+                if (callback != null) {
+                    callback.onSuccess(resultData);
+                }
+            }
+
+            @Override
+            public void onError(String requestId, ErrorInfo error) {
+                Log.e(TAG, "Upload error: " + error.getDescription());
+                if (callback != null) {
+                    callback.onError(error.getDescription());
+                }
+            }
+
+            @Override
+            public void onReschedule(String requestId, ErrorInfo error) {
+                Log.d(TAG, "Upload rescheduled: " + requestId);
+            }
+        };
+
         return MediaManager.get()
                 .upload(Uri.parse(filePath))
-                .option("api_key", "436471643295457")
                 .options(options)
-                .callback(new UploadCallback() {
-                    @Override
-                    public void onStart(String requestId) {
-                        Log.d(TAG, "Upload started: " + requestId);
-                    }
-
-                    @Override
-                    public void onProgress(String requestId, long bytes, long totalBytes) {
-                        int progress = (int) ((bytes * 100) / totalBytes);
-                        Log.d(TAG, "Upload progress: " + progress + "%");
-                        if (callback != null) {
-                            callback.onProgress(progress);
-                        }
-                    }
-
-                    @Override
-                    public void onSuccess(String requestId, Map resultData) {
-                        Log.d(TAG, "Upload successful: " + requestId);
-                        if (callback != null) {
-                            callback.onSuccess(resultData);
-                        }
-                    }
-
-                    @Override
-                    public void onError(String requestId, ErrorInfo error) {
-                        Log.e(TAG, "Upload error: " + error.getDescription());
-                        if (callback != null) {
-                            callback.onError(error.getDescription());
-                        }
-                    }
-
-                    @Override
-                    public void onReschedule(String requestId, ErrorInfo error) {
-                        Log.d(TAG, "Upload rescheduled: " + requestId);
-                    }
-                })
+                .callback(uploadCallback)
                 .dispatch();
     }
 
@@ -212,7 +217,8 @@ public class CloudinaryManager {
      */
     public String uploadImage(String imagePath, String folder,
                               final CloudinaryCallback<Map<String, Object>> callback) {
-        return uploadMedia(imagePath, "image", folder, callback);
+
+        return uploadMedia(imagePath, folder, "image", callback);
     }
 
     /**
@@ -225,7 +231,8 @@ public class CloudinaryManager {
      */
     public String uploadVideo(String videoPath, String folder,
                               final CloudinaryCallback<Map<String, Object>> callback) {
-        return uploadMedia(videoPath, "video", folder, callback);
+
+        return uploadMedia(videoPath, folder, "video", callback);
     }
 
     /**
@@ -315,6 +322,7 @@ public class CloudinaryManager {
 
                     // Simulate API call to backend
                     Thread.sleep(1000);
+                    // TODO: call to sv rm it
 
                     // Simulate successful deletion
                     if (callback != null) {

@@ -26,6 +26,7 @@ import com.example.clouddemo.api.ApiManager;
 import com.example.clouddemo.model.ResponseData;
 import com.example.clouddemo.utils.MediaUtils;
 import com.example.clouddemo.utils.cloudinary.CloudinaryManager;
+import com.example.clouddemo.utils.cloudinary.CloudinaryTransformationHelper;
 
 import java.io.File;
 import java.io.IOException;
@@ -130,36 +131,61 @@ public class MainActivity extends AppCompatActivity {
         // Initially hide upload button until media is selected
         btnUpload.setVisibility(View.GONE);
 
-        // TODO: rm
-//        CloudinaryTransformationHelper cloudinaryTransformationHelper = new CloudinaryTransformationHelper();
-//        cloudinaryTransformationHelper.autoFormat();
-//        String publicID = "medias/users/2509/images/file_pyyexl";
-//        this.url = cloudinaryManager.getResourceUrl(
-//                publicID,
-//                "image",
-//                cloudinaryTransformationHelper.getTransformations()
-//        );
-//        Log.i(TAG, "URL: " + url);
-//        File filesave = MediaUtils.saveMediaToInternalStorage(
-//                this,
-//                Uri.parse(url),
-//                "image"
-//        );
-//        Log.i(TAG, "File path: " + filesave.getAbsolutePath());
-//        imagePreview.setImageURI(Uri.fromFile(filesave));
+    }
 
-//        MediaUtils.getMediaFromHost(this, url, "")
-//                .thenAccept(a -> {
-//                    if (a == null) {
-//                        Log.i(TAG, "File path: null");
-//                    } else {
-//                        Log.i(TAG, "File path: " + a.getAbsolutePath());
-//                        runOnUiThread(() -> {
-//                            imagePreview.setVisibility(View.VISIBLE);
-//                            imagePreview.setImageURI(Uri.fromFile(a));
-//                        });
-//                    }
-//                });
+    /**
+     * Test del resource
+     */
+    private void TestDelResource() {
+        cloudinaryManager.deleteResource("file_kl3hmg", "image", new CloudinaryManager.CloudinaryCallback<String>() {
+            @Override
+            public void onSuccess(String result) {
+                Log.d(TAG, "del onSuccess");
+                Log.d(TAG, result);
+            }
+
+            @Override
+            public void onError(String errorMsg) {
+                Log.d(TAG, "del onError");
+                Log.d(TAG, errorMsg);
+            }
+
+            @Override
+            public void onProgress(int progress) {
+                Log.d(TAG, "del onProgress");
+                Log.d(TAG, String.valueOf(progress));
+            }
+        });
+    }
+
+    /**
+     * Test get image with public id
+     */
+    private void TestGetImage() {
+        // TODO: rm
+        CloudinaryTransformationHelper cloudinaryTransformationHelper = new CloudinaryTransformationHelper();
+        cloudinaryTransformationHelper.autoFormat();
+        String publicID = "file_kl3hmg";
+        String resourceType = "image";
+        this.url = cloudinaryManager.getResourceUrl(
+                publicID,
+                resourceType,
+                cloudinaryTransformationHelper.getTransformations()
+        );
+        Log.i(TAG, "URL: " + url);
+
+        MediaUtils.getMediaFromHost(this, url, "")
+                .thenAccept(a -> {
+                    if (a == null) {
+                        Log.i(TAG, "File path: null");
+                    } else {
+                        Log.i(TAG, "File path: " + a.getAbsolutePath());
+                        runOnUiThread(() -> {
+                            imagePreview.setVisibility(View.VISIBLE);
+                            imagePreview.setImageURI(Uri.fromFile(a));
+                        });
+                    }
+                });
     }
 
     /**
@@ -352,7 +378,7 @@ public class MainActivity extends AppCompatActivity {
      * Upload image to Cloudinary
      */
     private void uploadImage(File imageFile) {
-        String folder = "medias/users/2509/images/";
+        String folder = "/users/test/images/";
         cloudinaryManager.uploadImage(
                 Uri.fromFile(imageFile).toString(),
                 folder,
@@ -402,7 +428,7 @@ public class MainActivity extends AppCompatActivity {
      * Upload video to Cloudinary
      */
     private void uploadVideo(File videoFile) {
-        String folder = "medias/users/2509/videos/";
+        String folder = "/users/test/videos/";
         cloudinaryManager.uploadVideo(
                 Uri.fromFile(videoFile).toString(),
                 folder,
@@ -454,10 +480,10 @@ public class MainActivity extends AppCompatActivity {
      * Upload video thumbnail to Cloudinary
      */
     private void uploadVideoThumbnail(File thumbnailFile, String videoPublicId, String videoUrl) {
-        String folder = "medias/users/2509/thumbnails/";
+        String folder = "/users/test/thumbnails/";
         cloudinaryManager.uploadImage(
                 Uri.fromFile(thumbnailFile).toString(),
-                "medias/users/2509/thumbnails/",
+                "/users/test/thumbnails/",
                 new CloudinaryManager.CloudinaryCallback<Map<String, Object>>() {
                     @Override
                     public void onSuccess(Map<String, Object> result) {
